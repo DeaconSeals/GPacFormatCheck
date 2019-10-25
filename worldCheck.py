@@ -168,14 +168,6 @@ def checkStructure(text):
 	if errors: raise FormattingError(errors)
 
 	return width, height
-
-'''
-*valid map dimensions DONE
-*starting location of pac-man and ghosts DONE
-*correct map orientation
-*valid indexing scheme # 0 indexing 4 life
-*basic bounds checking DONE
-'''
 '''
 desc:	Checks for valid dimensions, capitalization, starting positions, object collision,
 		invalid declarations after start of game, and out-of-bounds movement and placement.
@@ -243,6 +235,7 @@ def checkContent(text, height, width):
 	# check starting position of pac-man and ghosts (moving pieces)
 	for player in moving:
 		location = getStartLoc(player,world)
+		# pre-emptively form message
 		if player == "m":
 			message = "pac-man"
 			expectedStart = pacStart
