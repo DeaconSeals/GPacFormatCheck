@@ -12,8 +12,7 @@ Non-secret-sauce checks:
 *correct number of elements per line
 *valid map dimensions
 *starting location of pac-man and ghosts
-*correct map orientation
-*valid indexing scheme # 0 indexing 4 life
+*collision detection
 *basic bounds checking
 
 Secret sauce checks:
@@ -30,6 +29,9 @@ class FormattingError(Exception):
 	def __init__(self, errors):
 		self.errors = errors
 
+'''
+desc:	Utility printing function that takes in a list of zero-indexing line numbers.
+'''
 def printLines(lines):
 	message = ""
 	if len(lines) == 1:
@@ -40,20 +42,26 @@ def printLines(lines):
 			message += ", "+repr(lines[i]+1)
 	return message
 
+'''
+desc:	Checks for any invalid characters in the document and squawks if it finds anything.
+
+pre:	Input `text` is a list of strings.
+'''
 def checkCharacters(text):
 	errors = []
 	errata = dict()
 	for line in range(len(text)):
 		for char in text[line]:
 			if char.casefold() not in "mpwft0123456789 ":
-				if char not in errata:
+				if char not in errata: # we found an illegal character
 					errata[char] = set()
 				errata[char].add(line)
 
+	# form error messages
 	if errata:
 		for char in errata:
 			lines = list(errata[char])
-			message = ": invalid character "+repr(char)+" found on "
+			message = "invalid character "+repr(char)+" found on "
 			
 			if len(lines) > 1:
 				lines.sort()
@@ -63,7 +71,13 @@ def checkCharacters(text):
 	if errors: raise FormattingError(errors)
 	
 	return
+'''
+desc:	Checks for formatting issues including: proper space delineation, correct
+		number of elements per line, existance of height and width, correct per-line format.
 
+pre:	Input `text` is a list of strings that has been ran through checkCharacters
+		to catch any invalid characters.
+'''
 def checkStructure(text):
 	errors = []
 	width = 0
@@ -79,16 +93,16 @@ def checkStructure(text):
 			break
 	
 	if text:
+		# check width and height
 		if text[0].isdigit() and '.' not in text[0]:
 			width = int(text[0])
 		else:
-			errors.append(": invalid width")
-
+			errors.append("invalid width")
 		if len(text) > 1:
 			if text[1].isdigit() and '.' not in text[1]:
 				height = int(text[1])
 			else:
-				errors.append(": invalid height")
+				errors.append("invalid height")
 
 		blankLines = []
 		noDelineation = set()
@@ -97,31 +111,39 @@ def checkStructure(text):
 		tooManyElements = []
 		wrongFormat = []
 
+		# iterate over all lines in the text after the height and width declarations
 		for line in range(2,len(text)):
 			if text[line]:
+				# check for correct number of space delineation characters
 				if text[line].count(" ") == 0:
 					noDelineation.add(line)
 				elif text[line].count(" ") > 2:
 					tooManySpaces.add(line)
 
+				# try to split string since spaces exist
 				if text[line].count(" ") > 0:
+					# segment line and ignore blank elements caused by extra spaces
 					segmented = [element for element in text[line].split(" ") if element]
-					if len(segmented) < 3:
+					
+					# check number of elements in segmented line
+					if len(segmented) < 3: # could be too few elements or line of just spaces
 						tooFewElements.append(line)
-					elif len(segmented) > 3:
+					elif len(segmented) > 3: # more elements than expected
 						tooManyElements.append(line)
-						tooManySpaces.discard(line)
+						tooManySpaces.discard(line) # actually had too many elements instead of too many spaces
 					else:
-						if segmented[0].casefold() not in {"m","1","2","3","f","t","p","w"} or \
-						not(segmented[1].isdigit() and '.' not in segmented[1]) or \
+						# check for two integer values in elements 1 and 2
+						if not(segmented[1].isdigit() and '.' not in segmented[1]) or \
 						not(segmented[2].isdigit() and '.' not in segmented[2]):
 							wrongFormat.append(line) 
 			else:
 				blankLines.append(line)
 
+		# blank lines don't actully break the visualizer, but you shouldn't have them
 		if blankLines:
-			softErrors.append(": [warning] unexpected blank line found on "+printLines(blankLines))
+			softErrors.append("unexpected blank line found on "+printLines(blankLines))
 
+		# make error messages if we found anything in this portion
 		noDelineation = list(noDelineation)
 		tooManySpaces = list(tooManySpaces)
 
@@ -131,64 +153,79 @@ def checkStructure(text):
 			tooManySpaces.sort()
 
 		if noDelineation:
-			errors.append(": there is no space delineation on "+printLines(noDelineation))
+			errors.append("there is no space delineation on "+printLines(noDelineation))
 		if tooManySpaces:
-			errors.append(": there are too many spaces on "+printLines(tooManySpaces))
+			errors.append("there are too many spaces on "+printLines(tooManySpaces))
 		if tooFewElements:
-			errors.append(": there are too few elements on "+printLines(tooFewElements))
+			errors.append("there are too few elements on "+printLines(tooFewElements))
 		if tooManyElements:
-			errors.append(": there are too many elements on "+printLines(tooManyElements))
+			errors.append("there are too many elements on "+printLines(tooManyElements))
 		if wrongFormat:
-			errors.append(": correct format of 'indicator integer integer' was not followed on "+printLines(wrongFormat))
+			errors.append("correct format of 'indicator integer integer' was not followed on "+printLines(wrongFormat))
 	else:
-		errors.append(": file is empty")
+		errors.append("file is empty")
 
 	if errors: raise FormattingError(errors)
 
 	return width, height
 
-def getElements(line):
-	return line[0], (int(line[1]), int(line[2]))
-
-def getFirstLoc(piece, world):
-	for line in world:
-		if len(line) < 3:
-			continue
-		target, location = getElements(line)
-		if target == piece:
-			return location
-	return (-1,-1)
-
-def inWidth(location, width):
-	return location[0] >= 0 and location[0] < width
-def inHeight(location, height):
-	return location[1] >= 0 and location[1] < height
 '''
 *valid map dimensions DONE
 *starting location of pac-man and ghosts DONE
 *correct map orientation
 *valid indexing scheme # 0 indexing 4 life
-*basic bounds checking
+*basic bounds checking DONE
+'''
+'''
+desc:	Checks for valid dimensions, capitalization, starting positions, object collision,
+		invalid declarations after start of game, and out-of-bounds movement and placement.
+
+pre:	Input `text` is a list of strings; `width` and `height` are integer values. All inputs
+		have been used or generated by the checkStructure function to catch the errors considered
+		in that function.
 '''
 def checkContent(text, height, width):
+	
+	# utility functions
+	def getElements(line):
+		return line[0], (int(line[1]), int(line[2]))
+
+	def getStartLoc(piece, world):
+		for line in world:
+			if len(line) < 3:
+				continue
+			target, location = getElements(line)
+			if target == piece:
+				return location
+		return (-1,-1)
+
+	def inWidth(location, width):
+		return location[0] >= 0 and location[0] < width
+	def inHeight(location, height):
+		return location[1] >= 0 and location[1] < height
+	
 	errors = []
 	errata = dict()
-	pacStart = (0, height-1)
-	ghostStart = (width-1, 0)
-	missing = (-1,-1)
+	
 	critical = False
 	declarations = True
 
 	walls = set()
 	pills = set()
-	reduced = {"m","1","2","3","f","t"}
-	validPieces = reduced | {"p","w"}
+	validPieces = {"m","1","2","3","f","t","p","w"}
+	objects = validPieces - {"t"}
+	moving = objects - {"f","p","w"}
+	pacStart = (0, height-1)
+	ghostStart = (width-1, 0)
+	missing = (-1,-1)
+	expectedStart = missing # probably a C++ habit
+	message = "" # same ^^^
 
 	# check for reasonable dimensions
 	if width < 2:
-		errors.append(": width must be at least 2")
+		errors.append("width must be at least 2")
 	if height < 2:
-		errors.append(": height must be at least 2")
+		errors.append("height must be at least 2")
 
 	# separate text into non-uniform 2D list
 	world = [[element for element in line.split(' ') if element] for line in text]
@@ -196,46 +233,33 @@ def checkContent(text, height, width):
 	# check for errors relating to character capitalization
 	capitals = [line[0] for line in world[2:] if line and line[0] not in validPieces and line[0].casefold() in validPieces]
 	if capitals:
-		message = ": detected incorrect use of capital letters for character(s) "
+		message = "detected incorrect use of capital letters for character(s) "
 		for letter in capitals:
 			message += " "+repr(letter)
 		errors.append(message)
 
 	if errors: raise FormattingError(errors)
 
-	# check starting position of pac-man and ghosts
-	location = getFirstLoc("m", world)
-	if location == missing:
-		errors.append(": couldn't find expected pac-man character 'm'")
-		critical = True
-	elif location != pacStart:
-		errors.append(": expected pac-man starting location of "+repr(pacStart)+" but got "+repr(location))
-	
-	location = getFirstLoc("1", world)
-	if location == missing:
-		errors.append(": couldn't find expected ghost character '1'")
-		critical = True
-	elif location != ghostStart:
-		errors.append(": expected ghost starting location of "+repr(pacStart)+" but got "+repr(location))
-
-	location = getFirstLoc("2", world)
-	if location == missing:
-		errors.append(": couldn't find expected ghost character '2'")
-		critical = True
-	elif location != ghostStart:
-		errors.append(": expected ghost starting location of "+repr(pacStart)+" but got "+repr(location))
-
-	location = getFirstLoc("3", world)
-	if location == missing:
-		errors.append(": couldn't find expected ghost character '3'")
-		critical = True
-	elif location != ghostStart:
-		errors.append(": expected ghost starting location of "+repr(pacStart)+" but got "+repr(location))
-	# finished looking at starting position
+	# check starting position of pac-man and ghosts (moving pieces)
+	for player in moving:
+		location = getStartLoc(player,world)
+		if player == "m":
+			message = "pac-man"
+			expectedStart = pacStart
+		else:
+			message = "ghost "+player
+			expectedStart = ghostStart
+		
+		if location == missing: # missing piece
+			errors.append("couldn't find expected "+message+" character "+repr(player))
+			critical = True
+		elif location != expectedStart: # unexpected starting location
+			errors.append("expected "+message+" starting location of "+repr(expectedStart)+" but got "+repr(location))
 
 	# live to squawk another day unless players are missing
 	if errors and critical: raise FormattingError(errors)
 
+	# iterate over all lines in the text after the height and width declarations
 	for line in range(2,len(world)):
 		
 		# skip blank lines
@@ -244,65 +268,70 @@ def checkContent(text, height, width):
 
 		piece, location = getElements(world[line])
 		
+		# check the first element
 		if piece not in validPieces:
-			errors.append(": invalid first element "+repr(piece)+" on line "+repr(line+1))
+			errors.append("invalid first element "+repr(piece)+" on line "+repr(line+1))
 		else:
-			if piece in {"m","1","2","3","f","p","w"}:
+			# check out of bounds placements or movements
+			if piece in objects: # physical objects
 				horizontal = inWidth(location, width)
 				vertical = inHeight(location, height)
-				if not horizontal or not vertical:
-					message = ": "+piece+" went out of bounds "
-					if not horizontal and not vertical:
-						message += "horizontally and vertically "
-					elif not horizontal:
-						message += "horizontally "
-					else:
-						message += "vertically "
+				if not horizontal or not vertical: # went out of bounds
+					message = piece+" went out of bounds "
+					if not horizontal and not vertical: # horizontally and vertically (alarming)
+						message += "horizontally and vertically"
+					elif not horizontal: # horizontally
+						message += "horizontally"
+					else: # vertically
+						message += "vertically"
 					message += " at location "+repr(location)+" on line "+repr(line+1)
 					errors.append(message)
 					raise FormattingError(errors)
 
-			if piece == "w":
-				if declarations and location not in walls:
+			if piece == "w": # walls
+				if declarations and location not in walls: # new wall
 					walls.add(location)
-				elif not declarations:
-					errors.append(": unexpected wall declaration after game start on line "+repr(line+1))
+				elif not declarations: # late wall declaration
+					errors.append("unexpected wall declaration after game start on line "+repr(line+1))
 					raise FormattingError(errors)
-				else:
-					errors.append(": wall on line "+repr(line+1)+" is defined already")
-			elif piece == "p":
-				if declarations and location not in pills:
+				else: # duplicate wall declaration
+					errors.append("wall on line "+repr(line+1)+" is defined already")
+			elif piece == "p": # pills
+				if declarations and location not in pills: # new pill
 					pills.add(location)
-				elif not declarations:
-					errors.append(": unexpected pill declaration after game start on line "+repr(line+1))
+				elif not declarations: # late pill declaration
+					errors.append("unexpected pill declaration after game start on line "+repr(line+1))
 					raise FormattingError(errors)
-				else:
-					errors.append(": pill on line "+repr(line+1)+" is defined already")
-			elif piece in {"m", "1", "2", "3"}:
+				else: # duplicate pill declaration
+					errors.append("pill on line "+repr(line+1)+" is defined already")
+			elif piece in moving: # pac-man and ghosts
+				# pre-emptively form message
 				if piece == "m":
-					message = ": pac-man"
+					message = "pac-man"
 				else:
-					message = ": ghost "+piece
+					message = "ghost "+piece
 				
-				if location in walls:
+				if location in walls: # you ran into a wall
 					errors.append(message+" ran into a wall at location "+repr(location)+" on line "+repr(line+1))
 					raise FormattingError(errors)
-			elif piece == "f":
-				if location in walls:
-					errors.append(": fruit spawned into a wall at location "+repr(location)+" on line "+repr(line+1))
+			elif piece == "f": # fruit
+				if location in walls: # you spawned in a wall
+					errors.append("fruit spawned into a wall at location "+repr(location)+" on line "+repr(line+1))
 					raise FormattingError(errors)
-			elif piece == "t":
-				if declarations:
-					if list(pills & walls):
-						message = ": intersection between pills ans walls at game location(s)"
-						for loc in list(pills & walls):
-							message += " "+repr(loc)
-					declarations = False
-
+			elif declarations and piece == "t": # first instance of time
+				if list(pills & walls):
+					message = "intersection between pills ans walls at game location(s)"
+					for loc in list(pills & walls):
+						message += " "+repr(loc)
+				declarations = False
 
 	if errors: raise FormattingError(errors)
 	return
-
+'''
+desc:	High-level function that calls an performs all checks in the desired order. Presents
+		soft errors and comments if everything went well. For specific checks, see descriptions
+		for the functions it calls.
+'''
 def checkWorld(filename):
 	worldText = []
 	global softErrors
@@ -317,12 +346,14 @@ def checkWorld(filename):
 			checkContent(worldText, height, width)
 
 			for error in softErrors:
-				print(filename+error)
+				print(filename+": [warning] "+error)
+			if not softErrors:
+				print(filename+": PASS")
 			softErrors.clear()
 
 		except FormattingError as e:
 			for error in e.errors:
-				print(filename + error)
+				print(filename+": [ERROR] "+ error)
 
 
 def main():
