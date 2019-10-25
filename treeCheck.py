@@ -70,14 +70,14 @@ def checkTree(filename):
 	if [print(filename+": [ERROR] "+error) for error in errors]: return
 
 	for line in range(len(treeText)):
-		node = nodes[line].caseFold()
+		node = nodes[line]
 		numKids = children[line]
 		if isSensor(node): # sensor
 			if numKids != 0: # sensor has children but shouldn't
 				errors.append("sensor node "+repr(node)+" on line "+repr(line+1)+" has "+repr(numKids)+" more children than it should")
 		elif node in operators: # operators
 			if numKids != operators[node]: # defined operator has incorrect number of children
-				errors.append("operator node "+repr(node)+" on line "+repr(line+1)+" has "+repr(numKids)+" but "+repr(operators[node])+" were expected")
+				errors.append("operator node "+repr(node)+" on line "+repr(line+1)+" has "+repr(numKids)+" children but "+repr(operators[node])+" were expected")
 		else: # unknown node
 			print(filename+": [warning] unknown node "+repr(node)+" on line "+repr(line+1)+" has "+repr(numKids)+" children")
 
