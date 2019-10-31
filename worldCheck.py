@@ -196,6 +196,9 @@ def checkContent(text, height, width):
 	def inHeight(location, height):
 		return location[1] >= 0 and location[1] < height
 	
+	def manhattanDistance(location0, location1):
+		return sum([abs(coord[0]-coord[1]) for coord in zip(list(location0),list(location1))]) # very extra
+	
 	errors = []
 	errata = dict()
 	
@@ -212,6 +215,11 @@ def checkContent(text, height, width):
 	missing = (-1,-1)
 	expectedStart = missing # probably a C++ habit
 	message = "" # same ^^^
+	fruit = set()
+	movingLocations = {"m":[]} # support multiple pac-people
+	
+
+
 
 	# check for reasonable dimensions
 	if width < 2:
@@ -235,13 +243,15 @@ def checkContent(text, height, width):
 	# check starting position of pac-man and ghosts (moving pieces)
 	for player in moving:
 		location = getStartLoc(player,world)
-		# pre-emptively form message
+
 		if player == "m":
 			message = "pac-man"
 			expectedStart = pacStart
+			movingLocations[player].append(location)
 		else:
 			message = "ghost "+player
 			expectedStart = ghostStart
+			movingLocations[player] = location
 		
 		if location == missing: # missing piece
 			errors.append("couldn't find expected "+message+" character "+repr(player))
@@ -298,25 +308,57 @@ def checkContent(text, height, width):
 				else: # duplicate pill declaration
 					errors.append("pill on line "+repr(line+1)+" is defined already")
 			elif piece in moving: # pac-man and ghosts
-				# pre-emptively form message
 				if piece == "m":
 					message = "pac-man"
+					fruit.discard(location)
+					
+					# partial support for multiple pac-people
+					for person in range(len(movingLocations[piece])):
+						distance = manhattanDistance(location,movingLocations[piece][person])
+						if distance == 1 or (piece == "m" and distance == 0): # this has a bug if pac-people are one apart and only one moves (wip)
+							movingLocations[piece][person] = location
+							break
+					else: # only executes if the for loop completes without breaking
+						errors.append(message+" made an invalid move into location "+repr(location)+" on line "+repr(line+1))
+						raise FormattingError(errors)
 				else:
 					message = "ghost "+piece
-				
+					if manhattanDistance(location, movingLocations[piece]) == 1 or declarations: # all ghost moves should have a distance of 1
+						movingLocations[piece] = location
+					else:
+						errors.append(message+" made an invalid move into location "+repr(location)+" on line "+repr(line+1))
+						raise FormattingError(errors)
+
 				if location in walls: # you ran into a wall
 					errors.append(message+" ran into a wall at location "+repr(location)+" on line "+repr(line+1))
 					raise FormattingError(errors)
+
 			elif piece == "f": # fruit
 				if location in walls: # you spawned in a wall
 					errors.append("fruit spawned into a wall at location "+repr(location)+" on line "+repr(line+1))
 					raise FormattingError(errors)
-			elif declarations and piece == "t": # first instance of time
-				if list(pills & walls):
-					message = "intersection between pills ans walls at game location(s)"
-					for loc in list(pills & walls):
-						message += " "+repr(loc)
-				declarations = False
+				if location in fruit and location not in movingLocations["m"]: # duplicate fruit spawns 
+					message = "duplicate fruit declarations at location "+repr(location)+" on "
+					if message not in errata:
+						errata[message] = []
+					errata[message].append(line)
+				else:
+					fruit.add(location)
+			elif piece == "t": # time
+				if declarations:
+					if list(pills & walls):
+						message = "intersection between pills and walls at game location(s)"
+						for loc in list(pills & walls):
+							message += " "+repr(loc)
+					declarations = False
+					time = location[0]
+				elif time - location[0] == 1:
+					time = location[0] # update time if correct
+				else: # incorrect time counting
+					errors.append("time didn't decrease by 1 as expected on line "+repr(line+1))
+
+	for error in errata:
+		errors.append(error+printLines(errata[error]))
 
 	if errors: raise FormattingError(errors)
 	return
