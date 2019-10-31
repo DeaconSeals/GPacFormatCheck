@@ -6,6 +6,7 @@
 # use note: Bash regex filename expressions supported
 
 import sys
+import re # python regex library
 
 
 def getDepth(line):
@@ -40,7 +41,7 @@ def checkTree(filename):
 	# identified sensor nodes
 	def isSensor(value):
 		numbers = value.split(".")
-		return value in sensors or (len(numbers) <= 2 and [element for element in numbers if element.isnumeric()]) # apparently identifying decimal strings is rough
+		return value in sensors or re.fullmatch('(-?[0-9]+(\.[0-9]*)?)',value)
 
 	errors = []
 	treeText = []
