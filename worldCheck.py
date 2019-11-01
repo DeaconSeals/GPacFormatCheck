@@ -219,8 +219,6 @@ def checkContent(text, height, width):
 	movingLocations = {"m":[]} # support multiple pac-people
 	
 
-
-
 	# check for reasonable dimensions
 	if width < 2:
 		errors.append("width must be at least 2")
@@ -311,6 +309,7 @@ def checkContent(text, height, width):
 				if piece == "m":
 					message = "pac-man"
 					fruit.discard(location)
+					pills.discard(location)
 					
 					# partial support for multiple pac-people
 					for person in range(len(movingLocations[piece])):
@@ -337,6 +336,8 @@ def checkContent(text, height, width):
 				if location in walls: # you spawned in a wall
 					errors.append("fruit spawned into a wall at location "+repr(location)+" on line "+repr(line+1))
 					raise FormattingError(errors)
+				if location in pills: # you spawned on a pill
+					errors.append("fruit spawned into a pill at location "+repr(location)+" on line "+repr(line+1))
 				if location in fruit and location not in movingLocations["m"]: # duplicate fruit spawns 
 					message = "duplicate fruit declarations at location "+repr(location)+" on "
 					if message not in errata:
@@ -352,10 +353,18 @@ def checkContent(text, height, width):
 							message += " "+repr(loc)
 					declarations = False
 					time = location[0]
-				elif time - location[0] == 1:
-					time = location[0] # update time if correct
-				else: # incorrect time counting
-					errors.append("time didn't decrease by 1 as expected on line "+repr(line+1))
+					score = location[1]
+					if score != 0:
+						errors.append("starting score is non-zero")
+				else:
+					if time - location[0] == 1:
+						time = location[0] # update time if correct
+					else: # incorrect time counting
+						errors.append("time didn't decrease by 1 as expected on line "+repr(line+1))
+					if location[1] - score < 0: # score erroneously decreased
+						errors.append("score decremented unexpectedly on line "+repr(line+1))
+				score = location[1]
+
 
 	for error in errata:
 		errors.append(error+printLines(errata[error]))
