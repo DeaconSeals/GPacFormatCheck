@@ -249,7 +249,7 @@ def checkContent(text, height, width):
 		else:
 			message = "ghost "+player
 			expectedStart = ghostStart
-			movingLocations[player] = location
+			movingLocations[player] = [location]
 		
 		if location == missing: # missing piece
 			errors.append("couldn't find expected "+message+" character "+repr(player))
@@ -301,6 +301,15 @@ def checkContent(text, height, width):
 					raise FormattingError(errors)
 				else: # duplicate wall declaration
 					errors.append("wall on line "+repr(line+1)+" is already defined")
+				
+				if location in pills: # you spawned on a pill
+					errors.append("wall spawned onto a pill at location "+repr(location)+" on line "+repr(line+1))
+				
+				if location in [loc for player in movingLocations for loc in movingLocations[player]]: # you spawned on someone
+					errors.append("wall spawned onto a player at location "+repr(location)+" on line "+repr(line+1))
+					errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
+					raise FormattingError(errors)
+			
 			elif piece == "p": # pills
 				if declarations and location not in pills: # new pill
 					pills.add(location)
@@ -310,6 +319,13 @@ def checkContent(text, height, width):
 					raise FormattingError(errors)
 				else: # duplicate pill declaration
 					errors.append("pill on line "+repr(line+1)+" is already defined")
+				
+				if location in walls: # you spawned in a wall
+					errors.append("pill spawned into a wall at location "+repr(location)+" on line "+repr(line+1))
+				
+				if location in [loc for player in movingLocations for loc in movingLocations[player]]: # you spawned on someone
+					errors.append("pill spawned onto a player at location "+repr(location)+" on line "+repr(line+1))
+			
 			elif piece in moving: # pac-man and ghosts
 				if piece == "m":
 					message = "pac-man"
@@ -328,8 +344,8 @@ def checkContent(text, height, width):
 						raise FormattingError(errors)
 				else:
 					message = "ghost "+piece
-					if manhattanDistance(location, movingLocations[piece]) == 1 or declarations: # all ghost moves should have a distance of 1
-						movingLocations[piece] = location
+					if manhattanDistance(location, movingLocations[piece][0]) == 1 or declarations: # all ghost moves should have a distance of 1
+						movingLocations[piece][0] = location
 					else:
 						errors.append(message+" made an invalid move into location "+repr(location)+" on line "+repr(line+1))
 						errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
@@ -345,8 +361,10 @@ def checkContent(text, height, width):
 					errors.append("fruit spawned into a wall at location "+repr(location)+" on line "+repr(line+1))
 					errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
 					raise FormattingError(errors)
+				
 				if location in pills: # you spawned on a pill
 					errors.append("fruit spawned into a pill at location "+repr(location)+" on line "+repr(line+1))
+				
 				if location in fruit and location not in movingLocations["m"]: # duplicate fruit spawns 
 					message = "duplicate fruit declarations at location "+repr(location)+" on "
 					if message not in errata:
@@ -370,6 +388,7 @@ def checkContent(text, height, width):
 						time = location[0] # update time if correct
 					else: # incorrect time counting
 						errors.append("time didn't decrease by 1 as expected on line "+repr(line+1))
+					
 					if location[1] - score < 0: # score erroneously decreased
 						errors.append("score decremented unexpectedly on line "+repr(line+1))
 				score = location[1]
