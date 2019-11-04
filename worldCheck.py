@@ -295,21 +295,21 @@ def checkContent(text, height, width):
 			if piece == "w": # walls
 				if declarations and location not in walls: # new wall
 					walls.add(location)
-				elif not declarations: # late wall declaration
+				elif not declarations and location not in walls: # late wall declaration
 					errors.append("unexpected wall declaration after game start on line "+repr(line+1))
 					errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
 					raise FormattingError(errors)
 				else: # duplicate wall declaration
-					errors.append("wall on line "+repr(line+1)+" is defined already")
+					errors.append("wall on line "+repr(line+1)+" is already defined")
 			elif piece == "p": # pills
 				if declarations and location not in pills: # new pill
 					pills.add(location)
-				elif not declarations: # late pill declaration
+				elif not declarations and location not in pills: # late pill declaration
 					errors.append("unexpected pill declaration after game start on line "+repr(line+1))
 					errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
 					raise FormattingError(errors)
 				else: # duplicate pill declaration
-					errors.append("pill on line "+repr(line+1)+" is defined already")
+					errors.append("pill on line "+repr(line+1)+" is already defined")
 			elif piece in moving: # pac-man and ghosts
 				if piece == "m":
 					message = "pac-man"
