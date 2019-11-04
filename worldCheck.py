@@ -258,7 +258,9 @@ def checkContent(text, height, width):
 			errors.append("expected "+message+" starting location of "+repr(expectedStart)+" but got "+repr(location))
 
 	# live to squawk another day unless players are missing
-	if errors and critical: raise FormattingError(errors)
+	if errors and critical:
+		errors.append("PARSING INTERRUPTED due to critical error")
+		raise FormattingError(errors)
 
 	# iterate over all lines in the text after the height and width declarations
 	for line in range(2,len(world)):
@@ -287,6 +289,7 @@ def checkContent(text, height, width):
 						message += "vertically"
 					message += " at location "+repr(location)+" on line "+repr(line+1)
 					errors.append(message)
+					errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
 					raise FormattingError(errors)
 
 			if piece == "w": # walls
@@ -294,6 +297,7 @@ def checkContent(text, height, width):
 					walls.add(location)
 				elif not declarations: # late wall declaration
 					errors.append("unexpected wall declaration after game start on line "+repr(line+1))
+					errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
 					raise FormattingError(errors)
 				else: # duplicate wall declaration
 					errors.append("wall on line "+repr(line+1)+" is defined already")
@@ -302,6 +306,7 @@ def checkContent(text, height, width):
 					pills.add(location)
 				elif not declarations: # late pill declaration
 					errors.append("unexpected pill declaration after game start on line "+repr(line+1))
+					errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
 					raise FormattingError(errors)
 				else: # duplicate pill declaration
 					errors.append("pill on line "+repr(line+1)+" is defined already")
@@ -319,6 +324,7 @@ def checkContent(text, height, width):
 							break
 					else: # only executes if the for loop completes without breaking
 						errors.append(message+" made an invalid move into location "+repr(location)+" on line "+repr(line+1))
+						errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
 						raise FormattingError(errors)
 				else:
 					message = "ghost "+piece
@@ -326,15 +332,18 @@ def checkContent(text, height, width):
 						movingLocations[piece] = location
 					else:
 						errors.append(message+" made an invalid move into location "+repr(location)+" on line "+repr(line+1))
+						errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
 						raise FormattingError(errors)
 
 				if location in walls: # you ran into a wall
 					errors.append(message+" ran into a wall at location "+repr(location)+" on line "+repr(line+1))
+					errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
 					raise FormattingError(errors)
 
 			elif piece == "f": # fruit
 				if location in walls: # you spawned in a wall
 					errors.append("fruit spawned into a wall at location "+repr(location)+" on line "+repr(line+1))
+					errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
 					raise FormattingError(errors)
 				if location in pills: # you spawned on a pill
 					errors.append("fruit spawned into a pill at location "+repr(location)+" on line "+repr(line+1))
