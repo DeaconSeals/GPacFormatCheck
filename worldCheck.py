@@ -323,7 +323,7 @@ def checkContent(text, height, width):
 				if location in walls: # you spawned in a wall
 					errors.append("pill spawned into a wall at location "+repr(location)+" on line "+repr(line+1))
 				
-				if location in [loc for player in movingLocations for loc in movingLocations[player]]: # you spawned on someone
+				if location in movingLocations["m"]: # you spawned on pac-man
 					errors.append("pill spawned onto a player at location "+repr(location)+" on line "+repr(line+1))
 			
 			elif piece in moving: # pac-man and ghosts
