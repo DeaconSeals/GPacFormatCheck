@@ -22,6 +22,7 @@ Secret sauce checks:
 '''
 
 import sys
+import re # python regex library
 
 softErrors = []
 
@@ -238,30 +239,6 @@ def checkContent(text, height, width):
 
 	if errors: raise FormattingError(errors)
 
-	# check starting position of pac-man and ghosts (moving pieces)
-	for player in moving or re.fullmatch('(m[0-9]*)',player):
-		location = getStartLoc(player,world)
-
-		if player[0] == "m":
-			message = "pac-man "+player
-			expectedStart = pacStart
-			movingLocations[player] = location
-		else:
-			message = "ghost "+player
-			expectedStart = ghostStart
-			movingLocations[player] = location
-		
-		if location == missing: # missing piece
-			errors.append("couldn't find expected "+message+" character "+repr(player))
-			critical = True
-		elif location != expectedStart: # unexpected starting location
-			errors.append("expected "+message+" starting location of "+repr(expectedStart)+" but got "+repr(location))
-
-	# live to squawk another day unless players are missing
-	if errors and critical:
-		errors.append("PARSING INTERRUPTED due to critical error")
-		raise FormattingError(errors)
-
 	# iterate over all lines in the text after the height and width declarations
 	for line in range(2,len(world)):
 		
@@ -272,7 +249,7 @@ def checkContent(text, height, width):
 		piece, location = getElements(world[line])
 		
 		# check the first element
-		if piece not in validPieces:
+		if piece not in validPieces and not re.fullmatch('(m[0-9]*|[0-9]+)',piece):
 			errors.append("invalid first element "+repr(piece)+" on line "+repr(line+1))
 		else:
 			# check out of bounds placements or movements
@@ -328,7 +305,21 @@ def checkContent(text, height, width):
 				if [True for player in movingLocations if player[0] == "m" and movingLocations[player] == location]: # you spawned on pac-man
 					errors.append("pill spawned onto a player at location "+repr(location)+" on line "+repr(line+1))
 			
-			elif piece in moving or re.fullmatch('(m[0-9]*)',player): # pac-man and ghosts
+			elif re.fullmatch('(m[0-9]*|[0-9]+)',piece): # pac-man and ghosts
+
+				# check for valid spawn locations while allowing arbitrary pac-people and ghosts
+				if declarations and piece not in movingLocations:
+					movingLocations[piece] = location
+					if piece[0] == "m":
+						message = "pac-man "+piece
+						expectedStart = pacStart
+					else:
+						message = "ghost "+piece
+						expectedStart = ghostStart
+					
+					if location != expectedStart: # unexpected starting location
+						errors.append("expected "+message+" starting location of "+repr(expectedStart)+" but got "+repr(location))
+
 				if piece[0] == "m":
 					message = "pac-man"
 					fruit.discard(location)
@@ -336,7 +327,7 @@ def checkContent(text, height, width):
 					
 					# partial support for multiple pac-people
 					distance = manhattanDistance(location,movingLocations[piece])
-					if 0 <= distance <= 1: # this has a bug if pac-people are one apart and only one moves (wip)
+					if 0 <= distance <= 1: # this only works if you number multiple pac-people
 						movingLocations[piece] = location
 					else: # only executes if the for loop completes without breaking
 						errors.append(message+" "+piece+" made an invalid move into location "+repr(location)+" on line "+repr(line+1))
