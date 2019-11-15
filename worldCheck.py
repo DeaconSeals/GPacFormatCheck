@@ -216,7 +216,7 @@ def checkContent(text, height, width):
 	expectedStart = missing # probably a C++ habit
 	message = "" # same ^^^
 	fruit = set()
-	movingLocations = {"m":[]} # support multiple pac-people
+	movingLocations = dict() # support multiple pac-people
 	
 
 	# check for reasonable dimensions
@@ -239,17 +239,17 @@ def checkContent(text, height, width):
 	if errors: raise FormattingError(errors)
 
 	# check starting position of pac-man and ghosts (moving pieces)
-	for player in moving:
+	for player in moving or re.fullmatch('(m[0-9]*)',player):
 		location = getStartLoc(player,world)
 
-		if player == "m":
-			message = "pac-man"
+		if player[0] == "m":
+			message = "pac-man "+player
 			expectedStart = pacStart
-			movingLocations[player].append(location)
+			movingLocations[player] = location
 		else:
 			message = "ghost "+player
 			expectedStart = ghostStart
-			movingLocations[player] = [location]
+			movingLocations[player] = location
 		
 		if location == missing: # missing piece
 			errors.append("couldn't find expected "+message+" character "+repr(player))
@@ -305,7 +305,7 @@ def checkContent(text, height, width):
 				if location in pills: # you spawned on a pill
 					errors.append("wall spawned onto a pill at location "+repr(location)+" on line "+repr(line+1))
 				
-				if location in [loc for player in movingLocations for loc in movingLocations[player]]: # you spawned on someone
+				if location in [movingLocations[player] for player in movingLocations]: # you spawned on someone
 					errors.append("wall spawned onto a player at location "+repr(location)+" on line "+repr(line+1))
 					errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
 					raise FormattingError(errors)
@@ -323,29 +323,29 @@ def checkContent(text, height, width):
 				if location in walls: # you spawned in a wall
 					errors.append("pill spawned into a wall at location "+repr(location)+" on line "+repr(line+1))
 				
-				if location in movingLocations["m"]: # you spawned on pac-man
+				# The following clause checks for pac-man collision in a world that may contain multiple pac-people.
+				# The logic is predicated on the fact that non-empty lists evaluate as True in Python. 
+				if [True for player in movingLocations if player[0] == "m" and movingLocations[player] == location]: # you spawned on pac-man
 					errors.append("pill spawned onto a player at location "+repr(location)+" on line "+repr(line+1))
 			
-			elif piece in moving: # pac-man and ghosts
-				if piece == "m":
+			elif piece in moving or re.fullmatch('(m[0-9]*)',player): # pac-man and ghosts
+				if piece[0] == "m":
 					message = "pac-man"
 					fruit.discard(location)
 					pills.discard(location)
 					
 					# partial support for multiple pac-people
-					for person in range(len(movingLocations[piece])):
-						distance = manhattanDistance(location,movingLocations[piece][person])
-						if distance == 1 or (piece == "m" and distance == 0): # this has a bug if pac-people are one apart and only one moves (wip)
-							movingLocations[piece][person] = location
-							break
+					distance = manhattanDistance(location,movingLocations[piece])
+					if 0 <= distance <= 1: # this has a bug if pac-people are one apart and only one moves (wip)
+						movingLocations[piece] = location
 					else: # only executes if the for loop completes without breaking
-						errors.append(message+" made an invalid move into location "+repr(location)+" on line "+repr(line+1))
+						errors.append(message+" "+piece+" made an invalid move into location "+repr(location)+" on line "+repr(line+1))
 						errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
 						raise FormattingError(errors)
 				else:
 					message = "ghost "+piece
-					if manhattanDistance(location, movingLocations[piece][0]) == 1 or declarations: # all ghost moves should have a distance of 1
-						movingLocations[piece][0] = location
+					if manhattanDistance(location, movingLocations[piece]) == 1 or declarations: # all ghost moves should have a distance of 1
+						movingLocations[piece] = location
 					else:
 						errors.append(message+" made an invalid move into location "+repr(location)+" on line "+repr(line+1))
 						errors.append("PARSING INTERRUPTED due to critical error on line "+repr(line+1))
