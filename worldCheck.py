@@ -319,6 +319,10 @@ def checkContent(text, height, width):
 					
 					if location != expectedStart: # unexpected starting location
 						errors.append("expected "+message+" starting location of "+repr(expectedStart)+" but got "+repr(location))
+				elif piece not in movingLocations:
+					errors.append("undefined character "+piece+" found on line "+repr(line+1))
+					raise FormattingError(errors)
+
 
 				if piece[0] == "m":
 					message = "pac-man"
