@@ -6,7 +6,7 @@
 # use note: Bash regex filename expressions supported
 
 '''
-Non-secret-sauce checks:
+Basic checks performed:
 *valid characters
 *valid delineation
 *correct number of elements per line
@@ -14,11 +14,6 @@ Non-secret-sauce checks:
 *starting location of pac-man and ghosts
 *collision detection
 *basic bounds checking
-
-Secret sauce checks:
-*map correctness
-*more complex move validation
-*other secret things
 '''
 
 import sys

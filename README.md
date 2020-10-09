@@ -1,5 +1,5 @@
 # GPacFormatCheck
-Format checking tools for the GPac assignment series in Auburn University's FS 2019 COMP 5970/6970/6976.
+Format checking tools for the GPac assignment series in Auburn University's Evolutionary Computing COMP 5660/6660/6666.
 
 worldCheck.py is a world file checking tool that accepts an arbitrary number of valid world file paths as arguments. Run with the command:
 ```
